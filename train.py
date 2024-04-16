@@ -15,7 +15,7 @@ os.environ['TORCH_HOME'] = os.path.join('resnet_Model_pth', 'machine_learning')	
 start_epoch = 0
 
 # Config
-RUN_ID = 5
+RUN_ID = 6
 SAVE_PATH = str(Path('data')/'checkpoints'/'run_{:05d}'.format(RUN_ID))
 LOG_PATH = str(Path('data')/'tensorboard'/'run_{:05d}'.format(RUN_ID))
 Path(SAVE_PATH).mkdir(parents=True, exist_ok=True)
@@ -23,7 +23,7 @@ Path(LOG_PATH).mkdir(parents=True, exist_ok=True)
 
 # Modified Hyperparameters
 LEARNING_RATE = 3e-4
-EPOCHS = 200
+EPOCHS = 100
 BATCH_SIZE = 4
 SAVE_RATE = 100
 LOG_RATE = 10
@@ -48,14 +48,14 @@ dataset_params = {
     #'d_rot': 5,			#original
     #'d_trans': 0.5,		#original
     'fixed_decalib': False,
-    #'resize_w': 1226,		#modified
-    #'resize_h': 370,		#modified
-	'resize_w': 621,		#original
-    'resize_h': 188,		#original
+    'resize_w': 1226,		#modified
+    'resize_h': 370,		#modified
+	#'resize_w': 621,		#original
+    #'resize_h': 188,		#original
 }
 
-# Custom collate function incase batch_size mismatch
-#Can possibly comment out...
+## Custom collate function incase batch_size mismatch
+## Can possibly comment out...
 def custom_collate(batch):
     # batch is a list of dictionaries, each containing the data for one sample
     # collate the data manually to handle the specific structure of your dataset
@@ -73,7 +73,7 @@ dataset = Kitti_Dataset(dataset_params)
 # Update DataLoader to use the custom collate function
 train_loader = DataLoader(dataset,
                           batch_size=BATCH_SIZE,
-                          shuffle=True,
+                          shuffle=False,
                           collate_fn=custom_collate
                           )
 # Model
@@ -82,14 +82,6 @@ criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 model.cuda()
 
-# Load
-# LOAD_RUN_ID = 5
-# LOAD_MODEL_ID = 15700
-# LOAD_PATH = str(Path('data')/'checkpoints'/'run_{:05d}'.format(LOAD_RUN_ID)/'model_{:05d}.pth'.format(LOAD_RUN_ID))
-# model_load = torch.load(LOAD_PATH)
-# model.load_state_dict(model_load['model_state_dict'])
-# start_epoch = model_load['epoch']
-# model.cuda()
 
 # Tensorboard
 writer = SummaryWriter(log_dir=LOG_PATH)
