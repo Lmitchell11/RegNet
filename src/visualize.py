@@ -32,7 +32,7 @@ def get_projected_img(pts, dist, img):
     dist_norm = utils.max_normalize_pts(dist)*90
 
     for i in range(pts.shape[0]):
-        cv2.circle(hsv_img, (int(pts[i, 0]), int(pts[i, 1])), radius=2, color=(int(dist_norm[i]), 255, 255), thickness=-1)
+        cv2.circle(hsv_img, (int(pts[i, 0]), int(pts[i, 1])), radius=1, color=(int(dist_norm[i]), 255, 255), thickness=-1)
 
     projection = cv2.cvtColor(hsv_img, cv2.COLOR_HSV2RGB)
     return projection

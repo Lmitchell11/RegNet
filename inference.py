@@ -13,7 +13,8 @@ import src.dataset_params as dp
 
 # Setup
 RUN_ID = 5
-MODEL_ID = 15700
+MODEL_ID = 2100				#modified
+#MODEL_ID = 15700			#orginal
 SAVE_PATH = str(Path('data')/'checkpoints'/'run_{:05d}'.format(RUN_ID)/'model_{:05d}.pth'.format(MODEL_ID))
 
 # Dataset
@@ -21,11 +22,15 @@ dataset_params = {
     'base_path': dp.TRAIN_SET_2011_09_26['base_path'],
     'date': dp.TRAIN_SET_2011_09_26['date'],
     'drives': dp.TRAIN_SET_2011_09_26['drives'],
-    'd_rot': 5,
-    'd_trans': 0.5,
+    'd_rot': 20,			#modified
+    'd_trans': 1.5,			#modified
+    # 'd_rot': 5,			#orginal
+    # 'd_trans': 0.5,		#orginal
     'fixed_decalib': False,
-    'resize_w': 621,
-    'resize_h': 188,
+    #'resize_w': 1226,		#modified
+    #'resize_h': 370,		#modified
+    'resize_w': 621,		#orginal
+    'resize_h': 188,		#orginal
 }
 
 dataset = Kitti_Dataset(dataset_params)

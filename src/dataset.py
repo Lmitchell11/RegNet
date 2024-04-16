@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 from pathlib import Path
 import numpy as np
 import cv2
+import warnings
 
 import src.calib as calib
 import src.utils as utils
@@ -24,31 +25,82 @@ class Kitti_Dataset(Dataset):
         self.img_path = []
         self.lidar_path = []
         for drive in drives:
-            cur_img_path = Path(base_path)/date/(date + '_drive_{:04d}_sync'.format(drive))/'image_02'/'data'
-            cur_lidar_path = Path(base_path)/date/(date + '_drive_{:04d}_sync'.format(drive))/'velodyne_points'/'data'
-            for file_name in sorted(cur_img_path.glob('*.png')):
-                self.img_path.append(str(file_name))
-            for file_name in sorted(cur_lidar_path.glob('*.bin')):
-                self.lidar_path.append(str(file_name))
+            cur_img_path = Path(base_path) / date / (date + f'_drive_{drive:04d}_sync') / 'image_02' / 'data'
+            cur_lidar_path = Path(base_path) / date / (date + f'_drive_{drive:04d}_sync') / 'velodyne_points' / 'data'
+            
+            if not cur_img_path.exists() or not cur_lidar_path.exists():
+                warnings.warn(f"Directory does not exist: {cur_img_path} or {cur_lidar_path}")
+                continue
+            
+            img_files = sorted(str(file_name) for file_name in cur_img_path.glob('*.png'))
+            lidar_files = sorted(str(file_name) for file_name in cur_lidar_path.glob('*.bin'))
+
+            if not img_files or not lidar_files:
+                warnings.warn(f"No files found in: {cur_img_path} or {cur_lidar_path}")
+                continue
+
+            self.img_path.extend(img_files)
+            self.lidar_path.extend(lidar_files)
+
+
+        # self.img_path = []
+        # self.lidar_path = []
+        # for drive in drives:
+        #     cur_img_path = Path(base_path)/date/(date + '_drive_{:04d}_sync'.format(drive))/'image_02'/'data'
+        #     cur_lidar_path = Path(base_path)/date/(date + '_drive_{:04d}_sync'.format(drive))/'velodyne_points'/'data'
+        #     if 'specific_image' in params:
+        #         specific_image_path = cur_img_path / params['specific_image']
+        #         if specific_image_path.exists():
+        #             self.img_path.append(str(specific_image_path))
+        #         specific_lidar_path = cur_lidar_path / params['specific_image'].replace('.png', '.bin')
+        #         if specific_lidar_path.exists():
+        #             self.lidar_path.append(str(specific_lidar_path))
+        #     else:
+        #         for file_name in sorted(cur_img_path.glob('*.png')):
+        #             self.img_path.append(str(file_name))
+        #         for file_name in sorted(cur_lidar_path.glob('*.bin')):
+        #             self.lidar_path.append(str(file_name))
 
         CAM02_PARAMS, VELO_PARAMS = calib.get_calib(date)
         self.cam_intrinsic = utils.get_intrinsic(CAM02_PARAMS['fx'], CAM02_PARAMS['fy'], CAM02_PARAMS['cx'], CAM02_PARAMS['cy'])
         self.velo_extrinsic = utils.get_extrinsic(VELO_PARAMS['rot'], VELO_PARAMS['trans'])
 
+
+    #def get_image_path(self, index):
+    #    return self.img_path[index]
+    
     def load_image(self, index):
         return cv2.imread(self.img_path[index])[:, :, ::-1]
 
+    #original code:
+    # def load_lidar(self, index):
+    #     return np.fromfile(self.lidar_path[index], dtype=np.float32).reshape(-1, 4)
+
     def load_lidar(self, index):
-        return np.fromfile(self.lidar_path[index], dtype=np.float32).reshape(-1, 4)
+        if index < 0 or index >= len(self.lidar_path):
+            print(f"Index out of range: {index}")
+            return None
+        try:
+            return np.fromfile(self.lidar_path[index], dtype=np.float32).reshape(-1, 4)
+        except Exception as e:
+            print(f"Error loading lidar data at index {index}: {e}")
+            return None
 
     def get_projected_pts(self, index, extrinsic, img_shape):
         pcl = self.load_lidar(index)
+        if pcl is None:
+            print(f"Failed to load lidar data at index {index}")
+            return None, None
         pcl_uv, pcl_z = utils.get_2D_lidar_projection(pcl, self.cam_intrinsic, extrinsic)
         mask = (pcl_uv[:, 0] > 0) & (pcl_uv[:, 0] < img_shape[1]) & (pcl_uv[:, 1] > 0) & (pcl_uv[:, 1] < img_shape[0]) & (pcl_z > 0)
         return pcl_uv[mask], pcl_z[mask]
 
     def get_depth_image(self, index, extrinsic, img_shape):
         pcl_uv, pcl_z = self.get_projected_pts(index, extrinsic, img_shape)
+        if pcl_uv is None:
+            print(f"Failed to get projected points at index {index}")
+            return None
+
         pcl_uv = pcl_uv.astype(np.uint32)
         pcl_z = pcl_z.reshape(-1, 1)
         depth_img = np.zeros((img_shape[0], img_shape[1], 1))
@@ -97,6 +149,10 @@ class Kitti_Dataset(Dataset):
         init_extrinsic = utils.mult_extrinsic(self.velo_extrinsic, decalib_extrinsic)
 
         depth_img = self.get_depth_image(index, init_extrinsic, rgb_img.shape)
+        if depth_img is None:
+            print(f"Failed to get depth image at index {index}")
+            # return a unique flag value
+            return None, None, None, None, None
         depth_img = utils.mean_normalize_pts(depth_img).astype('float32')
 
         rgb_img = cv2.resize(rgb_img, (self.resize_w, self.resize_h))
