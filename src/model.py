@@ -1,15 +1,17 @@
 import torch
 import torch.nn as nn
 from torchvision import models
-from torchvision.models import resnet18
 
 def remove_layer(model, n):
-    return nn.Sequential(*list(model.children())[:-n])
+    modules = list(model.children())[:-n]
+    model = nn.Sequential(*modules)
+    return model
 
 def get_num_parameters(model, trainable=False):
     if trainable:
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
-    return sum(p.numel() for p in model.parameters())
+    else:
+        return sum(p.numel() for p in model.parameters())
 
 class RegNet_v2(nn.Module):
     def __init__(self):
@@ -57,13 +59,13 @@ class RegNet_v2(nn.Module):
 class RegNet_v1(nn.Module):
     def __init__(self):
         super(RegNet_v1, self).__init__()
-        self.RGB_net = self._get_resnet18(pretrained=True)
-        self.depth_net = self._get_resnet18(pretrained=False)
-        self._adjust_input_channels(self.depth_net, 1)
-
+        self.RGB_net = remove_layer(models.resnet18(pretrained=True), 2)
+        self.depth_net = remove_layer(models.resnet18(pretrained=False), 2)
+        modules = list(self.depth_net.children())
+        modules[0] = nn.Conv2d(1, 64, 7, 2, 3, bias=False)
+        self.depth_net = nn.Sequential(*modules)
         for param in self.RGB_net.parameters():
             param.requires_grad = False
-
         self.matching = nn.Sequential(
             nn.Conv2d(1024, 1024, 3, 2, 1, bias=False),
             nn.BatchNorm2d(1024),
@@ -80,29 +82,15 @@ class RegNet_v1(nn.Module):
             nn.BatchNorm2d(512),
             nn.AdaptiveAvgPool2d((1, 1)),
         )
-        self.fc = nn.Sequential(
-            nn.Linear(512, 256),
-            nn.Linear(256, 8)
-        )
+        self.fc1 = nn.Linear(512, 256)
+        self.fc2 = nn.Linear(256, 8)
 
     def forward(self, rgb_img, depth_img):
         rgb_features = self.RGB_net(rgb_img)
         depth_features = self.depth_net(depth_img)
         concat_features = torch.cat((rgb_features, depth_features), 1)
         matching_features = self.matching(concat_features).squeeze()
-        x = self.fc(matching_features)
+        x = self.fc1(matching_features)
+        x = self.fc2(x)
+
         return x
-
-    def _get_resnet18(self, pretrained):
-        model = resnet18(pretrained=pretrained)
-        model = nn.Sequential(*list(model.children())[:-2])
-        return model
-
-    def _adjust_input_channels(self, model, in_channels):
-        first_conv_layer = model[0]
-        if isinstance(first_conv_layer, nn.Conv2d):
-            first_conv_layer.in_channels = in_channels
-            weight = first_conv_layer.weight.detach().clone()
-            new_weight = weight[:, :in_channels, :, :]
-            with torch.no_grad():
-                first_conv_layer.weight.data = new_weight

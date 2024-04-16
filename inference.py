@@ -13,8 +13,8 @@ import src.visualize as vis
 import src.dataset_params as dp
 
 # Setup
-RUN_ID = 5
-MODEL_ID = 16300			#modified
+RUN_ID = 8
+MODEL_ID = 4500			#modified
 #MODEL_ID = 15700			#orginal
 SAVE_PATH = str(Path('data')/'checkpoints'/'run_{:05d}'.format(RUN_ID)/'model_{:05d}.pth'.format(MODEL_ID))
 
@@ -32,7 +32,7 @@ dataset_params = {
     'resize_h': 370,		#modified
     #'resize_w': 621,		#orginal
     #'resize_h': 188,		#orginal
-    'image_index': 1226     # Choose a specific image index
+    'image_index': 3960     # Choose a specific image index
 }
 
 dataset = Kitti_Dataset(dataset_params)
@@ -45,7 +45,7 @@ model.cuda()
 
 test_loader = DataLoader(dataset,
                          batch_size=1,
-                         shuffle=True)
+                         shuffle=False)
 
 
 # Get the data

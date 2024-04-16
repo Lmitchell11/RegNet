@@ -15,19 +15,29 @@ os.environ['TORCH_HOME'] = os.path.join('resnet_Model_pth', 'machine_learning')	
 start_epoch = 0
 
 # Config
-RUN_ID = 6
+RUN_ID = 8
 SAVE_PATH = str(Path('data')/'checkpoints'/'run_{:05d}'.format(RUN_ID))
 LOG_PATH = str(Path('data')/'tensorboard'/'run_{:05d}'.format(RUN_ID))
 Path(SAVE_PATH).mkdir(parents=True, exist_ok=True)
 Path(LOG_PATH).mkdir(parents=True, exist_ok=True)
 
 # Modified Hyperparameters
-LEARNING_RATE = 3e-4
-EPOCHS = 100
-BATCH_SIZE = 4
-SAVE_RATE = 100
+LEARNING_RATE = 1e-3
+EPOCHS = 10
+BATCH_SIZE = 16
+SAVE_RATE = 900
 LOG_RATE = 10
 QUAT_FACTOR = 1
+
+# # Modified Hyperparameters
+# LEARNING_RATE = 1e-3
+# EPOCHS = 5
+# BATCH_SIZE = 8
+# SAVE_RATE = 1000
+# LOG_RATE = 10
+# QUAT_FACTOR = 1
+
+
 
 # Orginal Hyperparemeters
 #LEARNING_RATE = 3e-4
